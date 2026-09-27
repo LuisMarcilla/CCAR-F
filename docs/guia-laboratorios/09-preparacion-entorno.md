@@ -8,9 +8,13 @@ servidor MCP y los laboratorios sin errores de librerías.
 | Qué | Valor |
 |---|---|
 | Python | **3.12** (la grabación usó 3.12.7) |
-| Entorno virtual | `.venv/` en la raíz del repositorio |
-| Dependencias | `requirements.txt`: `anthropic==0.111.0`, `python-dotenv==1.2.2`, `mcp==1.28.1`, `jupyter` |
+| Entornos virtuales | `.venv/` para los notebooks de lección (API real) y `.venv-labs/` para los laboratorios (simulador, sólo Jupyter) |
+| Dependencias | `.venv`: `requirements.txt` (`anthropic==0.111.0`, `python-dotenv==1.2.2`, `mcp==1.28.1`, `jupyter`). `.venv-labs`: sólo `jupyter` |
 | API key | `.env` en la raíz con `ANTHROPIC_API_KEY=...` (sólo para los notebooks de lección) |
+
+> **Por qué dos entornos:** el simulador de los labs sólo se activa si `anthropic` **no** está
+> instalado. En `.venv` sí lo está, así que un lab abierto con ese kernel llama a la API
+> real con tu key, con costo. Ver [Laboratorios](#laboratorios-entorno-venv-labs).
 | Modelo | `claude-sonnet-4-6`, ya fijado en cada notebook |
 
 > **Por qué `anthropic==0.111.0` y no la última versión:** el SDK 1.0 (agosto 2026) eliminó
@@ -149,7 +153,8 @@ de `pip` garantiza que se instala en el mismo Python que se está ejecutando.
 
 ## 3. Configurar la API key
 
-Sólo la necesitan los notebooks de lección. Los laboratorios de `labs/` funcionan sin ella.
+Sólo la necesitan los notebooks de lección. Los laboratorios de `labs/`, abiertos con el
+kernel de `.venv-labs`, no la usan aunque exista.
 
 Crea un archivo llamado `.env` **en la raíz del repositorio**:
 
@@ -353,19 +358,81 @@ import sys; print(sys.executable)
 
 La ruta debe contener `.venv`.
 
-### Laboratorios
+### Laboratorios (entorno `.venv-labs`)
 
-Cada lab se abre **desde su propia carpeta**, porque importa `shopassist_lab.py`, que está
-junto al notebook:
+Los labs están pensados para correr **offline y gratis** con el simulador
+`shopassist_lab.py`. Para que eso ocurra de verdad hay que abrirlos con un entorno aparte.
 
-```bash
-cd labs/lab_first_request
-python -m jupyter lab
-```
+**Por qué no sirve `.venv`:**
 
-En VS Code basta con abrir `labs/lab_*/notebook.ipynb`: el kernel arranca en la carpeta del
-notebook. Los labs sólo necesitan Jupyter; `anthropic` y `python-dotenv` son opcionales
-(el simulador los reemplaza si faltan).
+- `shopassist_lab` sólo instala el simulador si el paquete `anthropic` **no** está
+  instalado. En `.venv` sí está, así que `from anthropic import Anthropic` carga el SDK real y
+  `SHOPASSIST_LAB_FORCE_SIM` no tiene efecto.
+- Con `python-dotenv` instalado, `load_dotenv()` busca el `.env` **subiendo por las carpetas
+  padre** y encuentra el de la raíz del repositorio.
+- Resultado: un lab abierto con `.venv` hace **llamadas reales, con costo**. Sin key, falla
+  con `Could not resolve authentication method` en vez de usar el simulador. Además, los
+  `check(...)` esperan las respuestas del simulador.
+
+**Configuración (una sola vez), desde la raíz del repositorio:**
+
+1. Crea el entorno e instala **sólo** Jupyter (no uses `requirements.txt` aquí):
+
+   | Sistema | Comandos |
+   |---|---|
+   | Windows | `py -3.12 -m venv .venv-labs`<br>`.venv-labs\Scripts\python.exe -m pip install jupyter` |
+   | macOS / Linux | `python3.12 -m venv .venv-labs`<br>`.venv-labs/bin/python -m pip install jupyter` |
+
+2. Fija el simulador para todo el entorno. Este comando crea un `sitecustomize.py` que
+   define `SHOPASSIST_LAB_FORCE_SIM=1` cada vez que arranca Python. Así, aunque una
+   `ANTHROPIC_API_KEY` llegue al kernel (por ejemplo, si VS Code carga el `.env`), el
+   simulador la ignora. Usa el Python de `.venv-labs`, en Windows
+   `.venv-labs\Scripts\python.exe` y en macOS/Linux `.venv-labs/bin/python`:
+
+   ```
+   .venv-labs\Scripts\python.exe -c "import sysconfig, pathlib; p = pathlib.Path(sysconfig.get_paths()['purelib'], 'sitecustomize.py'); print('ya existe, revisalo antes:', p) if p.exists() else (p.write_text('import os\nos.environ[\'SHOPASSIST_LAB_FORCE_SIM\'] = \'1\'\n'), print('creado:', p))"
+   ```
+
+3. Registra el kernel con un nombre inconfundible:
+
+   ```
+   .venv-labs\Scripts\python.exe -m ipykernel install --user --name ccar-f-labs --display-name "Python (CCAR-F labs - simulador)"
+   ```
+
+4. Comprueba que el entorno **no** tiene el SDK. Debe imprimir `False False 1`:
+
+   ```
+   .venv-labs\Scripts\python.exe -c "import importlib.util as u, os; print(bool(u.find_spec('anthropic')), bool(u.find_spec('dotenv')), os.environ.get('SHOPASSIST_LAB_FORCE_SIM'))"
+   ```
+
+`.venv-labs/` está en `.gitignore`. Si lo borras o recreas, repite los pasos 1 a 3.
+
+**Qué kernel usar en cada caso:**
+
+| Material | Kernel | Resultado |
+|---|---|---|
+| `01_*` … `13_*` (lecciones) | `.venv` (Python 3.12) | API real con tu key; consume crédito |
+| `labs/lab_*/notebook.ipynb` y `solution.ipynb` | **Python (CCAR-F labs - simulador)** | Simulador; offline y gratis |
+
+**Abrir un lab:**
+
+- **VS Code:** abre `labs/lab_<tema>/notebook.ipynb` → *Select Kernel* → **Jupyter Kernel…**
+  → **Python (CCAR-F labs - simulador)** (o *Python Environments* → `.venv-labs`). VS Code
+  recuerda la elección por notebook. El kernel arranca en la carpeta del notebook, así que
+  encuentra `shopassist_lab.py`. Como `.vscode/settings.json` recomienda `.venv`, **fíjate
+  de elegir el de labs**.
+- **Jupyter Lab:** ábrelo desde la carpeta del lab, porque importa `shopassist_lab.py`:
+
+  ```bash
+  cd labs/lab_first_request
+  ../../.venv-labs/Scripts/python.exe -m jupyter lab     # macOS/Linux: ../../.venv-labs/bin/python
+  ```
+
+**Cómo saber que estás en el simulador:** la celda de setup debe imprimir
+`[shopassist_lab] SIMULATED MODE - replies are canned fixtures, not Claude.` y los `id` de las
+respuestas empiezan con `msg_sim_`. Si ves `LIVE MODE`, o ningún banner en un lab que llama
+al cliente, el kernel es el equivocado: cámbialo antes de seguir. `lab_validation` no
+muestra banner porque no hace llamadas.
 
 ### Servidor MCP
 
@@ -393,7 +460,9 @@ MCP. Se detiene con **Ctrl+C**.
 | `SSL: CERTIFICATE_VERIFY_FAILED` o timeouts en `pip install` | Proxy o inspección TLS de la red corporativa (poco común con pip 24.2+, que ya usa los certificados del sistema) | Actualiza pip (`python -m pip install --upgrade pip`); si persiste, configura el proxy (`pip install --proxy http://usuario:clave@proxy:puerto ...`) o el certificado corporativo (`pip config set global.cert <ruta-al-certificado.pem>`); consulta a Mesa de Ayuda / Seguridad TI |
 | `APIConnectionError` con `CERTIFICATE_VERIFY_FAILED` / `self-signed certificate in certificate chain` al **llamar** a la API | El proxy corporativo intercepta `api.anthropic.com` y el SDK no confía en su certificado | `truststore` + `sitecustomize.py` (ver [Red corporativa con inspección TLS](#red-corporativa-con-inspección-tls-proxy)); como alternativa, `SSL_CERT_FILE` apuntando al certificado corporativo |
 | `ModuleNotFoundError: No module named 'shopassist_lab'` | El lab se abrió desde otra carpeta | Abre Jupyter desde `labs/lab_<tema>/` (paso 5, *Laboratorios*) |
-| El lab llama a Claude de verdad (sin banner `SIMULATED MODE`) | `ANTHROPIC_API_KEY` está definida en el entorno o hay un `.env` en la carpeta del lab | Es el comportamiento esperado; si quieres modo offline, abre el lab en una terminal sin esa variable |
+| Un lab muestra `LIVE MODE` o no muestra el banner `SIMULATED MODE` | El lab se abrió con el kernel `.venv`, que tiene `anthropic` instalado y lee el `.env` de la raíz | Cambia el kernel a **Python (CCAR-F labs - simulador)** (ver [Laboratorios](#laboratorios-entorno-venv-labs)). Quitar la key o definir `SHOPASSIST_LAB_FORCE_SIM` **no** basta con `.venv` |
+| Un lab falla con `Could not resolve authentication method` | Mismo caso: kernel `.venv` sin key disponible, así que el SDK real no se autentica | Cambia el kernel a **Python (CCAR-F labs - simulador)** |
+| `No module named 'ipykernel'` al elegir `.venv-labs` | Se instaló el entorno sin Jupyter | `.venv-labs\Scripts\python.exe -m pip install jupyter` |
 | En VS Code, *Select Kernel* no muestra *Python Environments* | Falta la extensión `ms-toolsai.jupyter` (sólo está *Jupyter Renderers*) o la carpeta está en *Restricted Mode* | Instala **Jupyter** de Microsoft, confía en la carpeta y recarga la ventana (paso 5, opción B) |
 | En VS Code, *Python Environments* lista sólo los Python globales y no `.venv` | `python.defaultInterpreterPath` en la configuración de usuario fija otro intérprete | Crea `.vscode/settings.json` apuntando al `.venv` (ver [Si `.venv` no aparece en la lista](#si-venv-no-aparece-en-la-lista)) |
 | `NameError: name '...' is not defined` | Se ejecutó una celda antes que las anteriores | Kernel → **Restart & Run All**, o ejecuta las celdas en orden desde la primera |
@@ -410,5 +479,8 @@ MCP. Se detiene con **Ctrl+C**.
 - [ ] El comando de verificación muestra `anthropic 0.111.0` y `sys.prefix` en `.venv`
 - [ ] `.env` en la raíz con `ANTHROPIC_API_KEY` (sólo notebooks de lección)
 - [ ] Kernel del notebook apuntando a `.venv` (`sys.executable`)
+- [ ] `.venv-labs` creado sólo con Jupyter, `sitecustomize.py` con `SHOPASSIST_LAB_FORCE_SIM`
+      y kernel **Python (CCAR-F labs - simulador)** registrado
+- [ ] Un lab abierto con ese kernel muestra `SIMULATED MODE`
 - [ ] En red corporativa: `truststore` instalado, `sitecustomize.py` creado y la prueba TLS
       devuelve `HTTP 401`

@@ -14,7 +14,7 @@ el proyecto "crece" a medida que se avanza.
 | Tipo | Dónde | Necesita API key | Qué es |
 |---|---|---|---|
 | **Notebooks de lección** | raíz: `01_*.ipynb` … `13_*.ipynb` | Sí (`.env` con `ANTHROPIC_API_KEY`) | El código que se escribe en los videos. Llamadas reales a Claude. |
-| **Laboratorios** | `labs/lab_*/` | No | Ejercicios con blancos `...` que se validan con `check(...)`. Corren contra un simulador offline (`shopassist_lab.py`). |
+| **Laboratorios** | `labs/lab_*/` | No, con el kernel de `.venv-labs` | Ejercicios con blancos `...` que se validan con `check(...)`. Corren contra un simulador offline (`shopassist_lab.py`) **sólo** si el kernel no tiene `anthropic` instalado; ver [09](09-preparacion-entorno.md#laboratorios-entorno-venv-labs). |
 | **Servidor MCP** | `shopassist_mcp_server.py` | No | Versión "desplegable" de las 5 herramientas de ShopAssist como servidor FastMCP. |
 
 ## Orden de estudio recomendado

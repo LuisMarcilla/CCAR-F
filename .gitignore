@@ -1,5 +1,6 @@
 .env
 .venv/
+.venv-labs/
 .vscode/
 __pycache__/
 labs/dist/

@@ -30,13 +30,25 @@ Al final de la celda, `check("<nombre>", ...)` imprime `[PASS]` con una explicac
 
 ## Cómo ejecutarlos
 
+Ábrelos con el kernel **Python (CCAR-F labs - simulador)**, del entorno `.venv-labs` (sólo
+Jupyter). La configuración paso a paso está en
+[09 — Laboratorios (entorno `.venv-labs`)](09-preparacion-entorno.md#laboratorios-entorno-venv-labs).
+
 ```bash
 cd labs/lab_first_request
-jupyter lab            # o abrir notebook.ipynb en VS Code
+../../.venv-labs/Scripts/python.exe -m jupyter lab   # o abrir notebook.ipynb en VS Code
 ```
 
-Requisitos: Python 3.10+ y Jupyter. `anthropic` y `python-dotenv` son **opcionales**: si no
-están instalados, el simulador los reemplaza; si están, se usan tal cual.
+Requisitos: Python 3.10+ y Jupyter. **El simulador sólo se activa si `anthropic` no está
+instalado en el kernel.** Si lo está, como en `.venv`, `shopassist_lab` no lo reemplaza: el
+lab usa el SDK real, `load_dotenv()` encuentra el `.env` de la raíz y las llamadas son reales
+y con costo. Por eso los labs van en un entorno aparte.
+
+| Kernel | `anthropic` instalado | Qué pasa en el lab |
+|---|---|---|
+| `.venv-labs` (recomendado) | No | Simulador siempre (además tiene `SHOPASSIST_LAB_FORCE_SIM=1`) |
+| `.venv` con key en `.env` | Sí | **API real, con costo** |
+| `.venv` sin key | Sí | Error `Could not resolve authentication method` (no pasa al simulador) |
 
 La primera celda es la única distinta a un proyecto real:
 
@@ -70,9 +82,18 @@ Lo que sí reproduce fielmente (los parámetros importan):
 | `tools` | Produce bloques `tool_use` reales con `input` válido según el schema |
 | `tool_choice` | Respeta `auto`, `any`, `none` y `{"type": "tool", ...}` forzado |
 
-Con `ANTHROPIC_API_KEY` definida (entorno o `.env`), el mismo notebook llama a Claude de
-verdad y el simulador se aparta. Para `temperature`, reenvía el valor al SDK real y muestra
-una nota, por el retiro del parámetro en SDK 1.x.
+Cuándo se aparta el simulador (según el código de `shopassist_lab.py`):
+
+- **`anthropic` instalado en el kernel:** el simulador nunca se instala y se usa el SDK
+  real, haya key o no. `SHOPASSIST_LAB_FORCE_SIM` no tiene efecto en este caso.
+- **`anthropic` no instalado:** se usa el simulador, salvo que haya una
+  `ANTHROPIC_API_KEY` real **y** se pueda cargar el SDK real. Si no se puede cargar, avisa y
+  vuelve al simulador. `SHOPASSIST_LAB_FORCE_SIM=1` fuerza el simulador aunque haya key.
+- El reemplazo de `load_dotenv()` sólo lee un `.env` en la carpeta del lab, no en las
+  carpetas padre.
+
+Con el SDK real, para `temperature` el módulo reenvía el valor al SDK y muestra una nota,
+por el retiro del parámetro en SDK 1.x.
 
 ## Comandos útiles
 
