@@ -35,13 +35,13 @@ These patterns are consistent across notebooks and `shopassist_mcp_server.py`; m
   ```python
   {
       "isError": True,
-      "errorCategory": "validation" | "permission" | "business",
+      "errorCategory": "validation" | "permission" | "business" | "transient",
       "isRetryable": False,
       "customerMessage": "...",   # safe to show the end user
       "developerMessage": "...",  # internal detail / log
   }
   ```
-  A "not found" is `isError: False` with a `null` payload + `message`, distinct from a hard error.
+  `isRetryable` is `True` only for `transient` failures (e.g. a service timeout, see `10_tools_errors.ipynb`). A "not found" is `isError: False` with a `null` payload + `message`, distinct from a hard error.
 - **Verification gating**: order/refund tools require a *verified* `customer_id`, not an email. `get_customer_by_email` resolves email → `customer_id`; `lookup_order_by_id` rejects mismatched ownership with `errorCategory: "permission"`. Tool docstrings explicitly state these preconditions ("Use this only when...", "Do not use this tool to...") — this is intentional prompt surface, keep it.
 - **Refund policy is enforced by tools, not the model**: `check_refund_eligibility` (30-day window, must be `delivered`) is policy-only and does not process anything; `process_refund` performs the action; an automatic-refund limit blocks large refunds and routes to `create_human_escalation`. The agent prompts explicitly tell the model *not* to decide eligibility itself.
 - **Fixture data**: `CUSTOMERS` / `ORDERS` are in-memory dicts (canonical customer `alex@example.com` → `CUS-1001`; orders `ORD-12345678`, `ORD-87654321`). Reuse these IDs in new examples rather than inventing new ones.
@@ -50,4 +50,3 @@ These patterns are consistent across notebooks and `shopassist_mcp_server.py`; m
 ## Other files
 
 - `shopassist_mcp_server.py`: standalone FastMCP server exposing the five ShopAssist tools (`get_customer_by_email`, `lookup_order_by_id`, `check_refund_eligibility`, `process_refund`, `create_human_escalation`). It is the deployable mirror of the tools prototyped in `11_shopassist_tools.ipynb` — keep the two in sync.
-- `claude-temperature-slide.html`: a self-contained teaching slide for notebook `03`.
