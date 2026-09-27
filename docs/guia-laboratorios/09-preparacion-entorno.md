@@ -200,6 +200,73 @@ Qué revisar:
 
 El comando no imprime la key, sólo si existe.
 
+### Red corporativa con inspección TLS (proxy)
+
+**Cuándo aplica:** en una red de empresa (oficina o VPN), cualquier llamada a Claude
+desde Python falla con:
+
+```
+APIConnectionError ... [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed:
+self-signed certificate in certificate chain
+```
+
+**Por qué pasa:** el proxy corporativo intercepta las conexiones HTTPS y presenta un
+certificado firmado por una autoridad interna. El sistema operativo (y el navegador)
+confían en ella, pero el SDK de Anthropic usa su propia lista de certificados (`certifi`) y
+la rechaza. `pip` sí funciona porque, desde la versión 24.2, usa los certificados del
+sistema.
+
+**Solución:** [`truststore`](https://pypi.org/project/truststore/) hace que Python use los
+certificados del sistema operativo (almacén de Windows, Llavero de macOS o bundle del
+sistema en Linux). **La verificación TLS sigue activa**: no uses `verify=False`.
+
+1. Instálalo en el `.venv` (con el entorno activo):
+
+   ```
+   python -m pip install truststore
+   ```
+
+2. Actívalo para **todo** el entorno con un `sitecustomize.py`, que Python ejecuta al
+   arrancar, incluido el kernel de Jupyter. Así no hay que tocar ningún notebook. Este
+   comando lo crea en el `site-packages` del `.venv` y no sobrescribe uno existente
+   (funciona en PowerShell, cmd, bash y zsh):
+
+   ```
+   python -c "import sysconfig, pathlib; p = pathlib.Path(sysconfig.get_paths()['purelib'], 'sitecustomize.py'); print('ya existe, revisalo antes:', p) if p.exists() else (p.write_text('try:\n    import truststore\n    truststore.inject_into_ssl()\nexcept ImportError:\n    pass\n'), print('creado:', p))"
+   ```
+
+   El archivo resultante contiene:
+
+   ```python
+   try:
+       import truststore
+       truststore.inject_into_ssl()
+   except ImportError:
+       pass
+   ```
+
+3. Verifica **sin gastar crédito**: la petición va sin key, así que la API responde 401.
+   Si llega a responder, la conexión TLS funciona.
+
+   ```
+   python -c "import ssl, truststore, httpx; print('truststore activo:', ssl.SSLContext is truststore.SSLContext); print('HTTP', httpx.get('https://api.anthropic.com/v1/models').status_code, '(401 esperado)')"
+   ```
+
+   Salida esperada: `truststore activo: True` y `HTTP 401 (401 esperado)`. Si ves
+   `True` pero sigue el error SSL, el certificado corporativo no está en el almacén del
+   sistema: pide a Mesa de Ayuda / Seguridad TI el certificado raíz (`.pem`) y define
+   `SSL_CERT_FILE` apuntando a él.
+
+Notas:
+
+- Fuera de la red corporativa no molesta: el almacén del sistema también incluye las
+  autoridades públicas.
+- `sitecustomize.py` vive dentro de `.venv/`, que no se versiona. **Si borras o recreas el
+  `.venv`, repite los pasos 1 y 2.**
+- No hace falta en los labs con simulador: no hacen llamadas de red.
+- `truststore` no está en `requirements.txt` porque sólo se necesita en redes con
+  inspección TLS.
+
 ---
 
 ## 5. Abrir los notebooks y seleccionar el kernel
@@ -279,8 +346,8 @@ MCP. Se detiene con **Ctrl+C**.
 | `'python3.12' is not recognized` en Windows | En Windows el lanzador es `py` | `py -3.12 -m venv .venv` |
 | Tras instalar 3.12, `python --version` en otros proyectos muestra 3.12 | Se marcó *Add python.exe to PATH* y 3.12 quedó antes en el `PATH` | Desmarca esa opción desde *Modificar* o quita las rutas `Python312` del `PATH` (ver [otra versión de Python](#si-ya-usas-otra-versión-de-python-en-otros-proyectos)) |
 | `No Python at '...'` o `Unable to create process` | El `.venv` se creó con un Python que se desinstaló o movió | Borra `.venv` y vuelve a crearlo (paso 2) |
-| `SSL: CERTIFICATE_VERIFY_FAILED` o timeouts en `pip install` | Proxy o inspección TLS de la red corporativa | Configura el proxy (`pip install --proxy http://usuario:clave@proxy:puerto ...`) o el certificado corporativo (`pip config set global.cert <ruta-al-certificado.pem>`); consulta a Mesa de Ayuda / Seguridad TI |
-| Mismo error SSL al **llamar** a la API desde el notebook | El proxy corporativo también intercepta `api.anthropic.com` | Define `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` apuntando al certificado corporativo, o pide que se habilite el dominio |
+| `SSL: CERTIFICATE_VERIFY_FAILED` o timeouts en `pip install` | Proxy o inspección TLS de la red corporativa (poco común con pip 24.2+, que ya usa los certificados del sistema) | Actualiza pip (`python -m pip install --upgrade pip`); si persiste, configura el proxy (`pip install --proxy http://usuario:clave@proxy:puerto ...`) o el certificado corporativo (`pip config set global.cert <ruta-al-certificado.pem>`); consulta a Mesa de Ayuda / Seguridad TI |
+| `APIConnectionError` con `CERTIFICATE_VERIFY_FAILED` / `self-signed certificate in certificate chain` al **llamar** a la API | El proxy corporativo intercepta `api.anthropic.com` y el SDK no confía en su certificado | `truststore` + `sitecustomize.py` (ver [Red corporativa con inspección TLS](#red-corporativa-con-inspección-tls-proxy)); como alternativa, `SSL_CERT_FILE` apuntando al certificado corporativo |
 | `ModuleNotFoundError: No module named 'shopassist_lab'` | El lab se abrió desde otra carpeta | Abre Jupyter desde `labs/lab_<tema>/` (paso 5, *Laboratorios*) |
 | El lab llama a Claude de verdad (sin banner `SIMULATED MODE`) | `ANTHROPIC_API_KEY` está definida en el entorno o hay un `.env` en la carpeta del lab | Es el comportamiento esperado; si quieres modo offline, abre el lab en una terminal sin esa variable |
 | `NameError: name '...' is not defined` | Se ejecutó una celda antes que las anteriores | Kernel → **Restart & Run All**, o ejecuta las celdas en orden desde la primera |
@@ -297,3 +364,5 @@ MCP. Se detiene con **Ctrl+C**.
 - [ ] El comando de verificación muestra `anthropic 0.111.0` y `sys.prefix` en `.venv`
 - [ ] `.env` en la raíz con `ANTHROPIC_API_KEY` (sólo notebooks de lección)
 - [ ] Kernel del notebook apuntando a `.venv` (`sys.executable`)
+- [ ] En red corporativa: `truststore` instalado, `sitecustomize.py` creado y la prueba TLS
+      devuelve `HTTP 401`
