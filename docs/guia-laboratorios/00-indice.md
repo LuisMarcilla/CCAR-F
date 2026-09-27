@@ -40,6 +40,7 @@ de la lección y, a continuación, resolver el laboratorio que le corresponde.
 
 Material de apoyo:
 
+- [09 — Preparación del entorno (Windows, macOS/Linux, kernel, verificación, errores típicos)](09-preparacion-entorno.md) — **empieza por aquí**
 - [07 — Cómo funcionan los laboratorios (simulador `shopassist_lab`)](07-simulador-labs.md)
 - [08 — Observaciones del código, conceptos clave y glosario](08-observaciones-y-glosario.md)
 
@@ -74,6 +75,8 @@ modelo hacia la aplicación:
 ## Requisitos para ejecutar
 
 - Python 3.12 con entorno virtual en `.venv/`.
-- `pip install "anthropic<1" python-dotenv jupyter mcp` (el pin `<1` es deliberado, ver
-  [01 — Fundamentos](01-fundamentos-api.md#nota-temperature-está-siendo-retirado)).
+- `python -m pip install -r requirements.txt` (fija `anthropic==0.111.0`; mantenerse en 0.x es
+  deliberado, ver [01 — Fundamentos](01-fundamentos-api.md#nota-temperature-está-siendo-retirado)).
 - `.env` con `ANTHROPIC_API_KEY` sólo para los notebooks de lección. Los labs no lo necesitan.
+
+Paso a paso completo en [09 — Preparación del entorno](09-preparacion-entorno.md).

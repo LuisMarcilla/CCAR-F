@@ -1,0 +1,8 @@
+# Versions used in the course recordings (Python 3.12.7).
+# anthropic stays on 0.x: 1.0+ removed `temperature`, which 03_temperature.ipynb needs.
+anthropic==0.111.0
+python-dotenv==1.2.2
+mcp==1.28.1
+
+# Recorded version not documented; any current release works.
+jupyter

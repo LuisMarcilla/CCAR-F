@@ -17,23 +17,29 @@ immediately, instead of re-running a whole script each time.
 
 ## Setup
 
+> **Step-by-step environment guide:** [`docs/guia-laboratorios/09-preparacion-entorno.md`](docs/guia-laboratorios/09-preparacion-entorno.md)
+> (in Spanish) covers Windows (PowerShell/cmd) and macOS/Linux, choosing the `.venv` kernel in
+> Jupyter and VS Code, a one-line command to verify the environment, and common errors with
+> their fixes. The short version follows.
+
 ### 1. Python and a virtual environment
 
 Recorded on Python 3.12 (3.12.7). From the repository root:
 
 ```bash
-python3.12 -m venv .venv
+python3.12 -m venv .venv           # Windows: py -3.12 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 ```
 
 ### 2. Install the packages
 
 ```bash
-pip install "anthropic<1" python-dotenv jupyter mcp
+python -m pip install -r requirements.txt
 ```
 
-Versions used in the recordings: `anthropic` 0.111.0, `python-dotenv` 1.2.2, `mcp` 1.28.1.
-The `anthropic<1` pin is deliberate - see [Known issue: `temperature`](#known-issue-temperature) below.
+`requirements.txt` pins the versions used in the recordings: `anthropic` 0.111.0,
+`python-dotenv` 1.2.2, `mcp` 1.28.1, plus `jupyter`. Keeping `anthropic` on 0.x is
+deliberate - see [Known issue: `temperature`](#known-issue-temperature) below.
 
 Only `anthropic` and `python-dotenv` are needed for notebooks 01–10 and 12–13. `mcp` is
 needed by notebook 11 and by `shopassist_mcp_server.py`, which import
@@ -59,7 +65,11 @@ jupyter lab          # then open any notebook in the browser
 ```
 
 Or open the folder in VS Code with the Python and Jupyter extensions and select `.venv` as
-the kernel.
+the kernel. If a notebook reports `ModuleNotFoundError`, the kernel is almost always not the
+`.venv` one - see the [environment guide](docs/guia-laboratorios/09-preparacion-entorno.md#5-abrir-los-notebooks-y-seleccionar-el-kernel).
+
+A study guide that walks through every notebook and lab in order lives in
+[`docs/guia-laboratorios/`](docs/guia-laboratorios/00-indice.md) (in Spanish).
 
 Work through the notebooks in numerical order and run the cells top to bottom - later cells
 depend on variables defined by earlier ones.
