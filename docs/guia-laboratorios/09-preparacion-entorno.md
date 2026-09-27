@@ -292,12 +292,56 @@ Luego, en cada notebook: menú **Kernel → Change Kernel… → Python (CCAR-F)
 
 ### Opción B — VS Code
 
-1. Instala las extensiones **Python** y **Jupyter** de Microsoft.
-2. Abre la carpeta del repositorio (**File → Open Folder**), no un notebook suelto.
+1. Instala las extensiones de Microsoft **Python** (`ms-python.python`) y **Jupyter**
+   (`ms-toolsai.jupyter`).
+   *Jupyter Renderers* (`ms-toolsai.jupyter-renderers`) **no** la reemplaza: sólo muestra
+   salidas. Sin `ms-toolsai.jupyter`, *Select Kernel* no ofrece *Python Environments*.
+   Para comprobarlo: `code --list-extensions | findstr jupyter` (Windows) o
+   `code --list-extensions | grep jupyter` (macOS/Linux).
+2. Abre la carpeta del repositorio (**File → Open Folder**), no un notebook suelto. Si
+   aparece **Restricted Mode**, pulsa *Manage → Trust*: en modo restringido las extensiones
+   no detectan entornos.
 3. Abre un notebook y pulsa **Select Kernel** (arriba a la derecha).
-4. Elige **Python Environments… → `.venv` (Python 3.12.x)**.
-   Si no aparece: **Ctrl/Cmd+Shift+P → Python: Select Interpreter → Enter interpreter path**
-   y apunta a `.venv\Scripts\python.exe` (Windows) o `.venv/bin/python` (macOS/Linux).
+4. Elige **Python Environments… → `.venv` (Python 3.12.x)**. La primera vez VS Code puede
+   tardar unos 20-30 s en terminar de descubrir entornos; si no aparece, espera y vuelve a
+   abrir el selector.
+5. **No elijas "Create Python Environment"**, aunque aparezca como recomendada: crea otro
+   entorno (o propone reemplazar el `.venv`) sin las versiones de `requirements.txt` ni el
+   ajuste de [red corporativa](#red-corporativa-con-inspección-tls-proxy).
+
+#### Si `.venv` no aparece en la lista
+
+**Causa más común:** tu configuración de usuario de VS Code fija un intérprete global para
+todas las carpetas. Revísalo en `settings.json` de usuario (**Ctrl/Cmd+Shift+P → Preferences:
+Open User Settings (JSON)**). Si ves algo como:
+
+```json
+"python.defaultInterpreterPath": "c:\\Program Files\\Python314\\python.exe"
+```
+
+no lo borres (lo usan tus otros proyectos). Sobrescríbelo **sólo para este repositorio**
+creando `.vscode/settings.json` en la raíz:
+
+| Sistema | Contenido de `.vscode/settings.json` |
+|---|---|
+| Windows | `{ "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe" }` |
+| macOS / Linux | `{ "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python" }` |
+
+Luego **Ctrl/Cmd+Shift+P → Developer: Reload Window** y vuelve a *Select Kernel*.
+
+- `.vscode/` está en `.gitignore`: la ruta depende del sistema operativo, así que cada uno
+  crea el suyo.
+- Para confirmar que la causa era esa, revisa **View → Output → Python Environments**: si
+  aparece `Found venv environment: .venv` pero después `defaultInterpreterPath: ...Python314...`,
+  VS Code detectó el entorno pero el ajuste global lo tapaba.
+
+**Alternativa sin archivo:** **Ctrl/Cmd+Shift+P → Python: Select Interpreter → Enter
+interpreter path** y apunta a `.venv\Scripts\python.exe` (Windows) o `.venv/bin/python`
+(macOS/Linux); luego vuelve a *Select Kernel*.
+
+**Si nada de lo anterior funciona:** actualiza la extensión Jupyter desde la vista de
+Extensiones; una versión muy anterior a la de la extensión Python puede no listar los
+entornos del proyecto.
 
 ### Comprobar el kernel desde un notebook
 
@@ -350,6 +394,8 @@ MCP. Se detiene con **Ctrl+C**.
 | `APIConnectionError` con `CERTIFICATE_VERIFY_FAILED` / `self-signed certificate in certificate chain` al **llamar** a la API | El proxy corporativo intercepta `api.anthropic.com` y el SDK no confía en su certificado | `truststore` + `sitecustomize.py` (ver [Red corporativa con inspección TLS](#red-corporativa-con-inspección-tls-proxy)); como alternativa, `SSL_CERT_FILE` apuntando al certificado corporativo |
 | `ModuleNotFoundError: No module named 'shopassist_lab'` | El lab se abrió desde otra carpeta | Abre Jupyter desde `labs/lab_<tema>/` (paso 5, *Laboratorios*) |
 | El lab llama a Claude de verdad (sin banner `SIMULATED MODE`) | `ANTHROPIC_API_KEY` está definida en el entorno o hay un `.env` en la carpeta del lab | Es el comportamiento esperado; si quieres modo offline, abre el lab en una terminal sin esa variable |
+| En VS Code, *Select Kernel* no muestra *Python Environments* | Falta la extensión `ms-toolsai.jupyter` (sólo está *Jupyter Renderers*) o la carpeta está en *Restricted Mode* | Instala **Jupyter** de Microsoft, confía en la carpeta y recarga la ventana (paso 5, opción B) |
+| En VS Code, *Python Environments* lista sólo los Python globales y no `.venv` | `python.defaultInterpreterPath` en la configuración de usuario fija otro intérprete | Crea `.vscode/settings.json` apuntando al `.venv` (ver [Si `.venv` no aparece en la lista](#si-venv-no-aparece-en-la-lista)) |
 | `NameError: name '...' is not defined` | Se ejecutó una celda antes que las anteriores | Kernel → **Restart & Run All**, o ejecuta las celdas en orden desde la primera |
 | El notebook 01 reinstala paquetes con `%pip install` | Esa celda existe para quien empieza sin entorno | Con el `.venv` ya preparado se puede saltar; si la ejecutas, reinicia el kernel después |
 
