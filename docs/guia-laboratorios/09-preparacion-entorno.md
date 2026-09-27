@@ -36,12 +36,71 @@ Si no está instalado:
 
 | Sistema | Instalación |
 |---|---|
-| Windows | `winget install Python.Python.3.12` o el instalador de [python.org](https://www.python.org/downloads/) (marca *Add python.exe to PATH*) |
+| Windows | Instalador de [python.org](https://www.python.org/downloads/) (recomendado, ver la sección siguiente) o `winget install Python.Python.3.12` |
 | macOS | `brew install python@3.12` |
 | Ubuntu / Debian | `sudo apt install python3.12 python3.12-venv` |
 
 > Con otras versiones (por ejemplo 3.14), pip resuelve el `requirements.txt` sin conflictos,
 > pero el curso sólo se grabó y probó con 3.12. Usa 3.12 para evitar sorpresas.
+
+### Si ya usas otra versión de Python en otros proyectos
+
+Instalar 3.12 **no tiene por qué** cambiar tu Python por defecto. Las versiones conviven, y
+cada proyecto usa la versión con la que se creó su `.venv`.
+
+#### Windows
+
+Hay dos mecanismos que deciden qué Python se ejecuta:
+
+| Comando | Qué versión usa | ¿Cambia al instalar 3.12? |
+|---|---|---|
+| `py` (lanzador) | La **más nueva** instalada (marcada con `*` en `py -0`) | No, si ya tienes una versión más nueva (p. ej. 3.14) |
+| `py -3.12` | 3.12, explícitamente | — |
+| `python` | El primer `python.exe` que encuentra en el `PATH` | **Puede cambiar** si al instalar marcas *Add python.exe to PATH* |
+
+Para instalar 3.12 sin tocar tu versión principal:
+
+1. Descarga el instalador de 3.12 desde [python.org](https://www.python.org/downloads/).
+2. **No marques** *Add python.exe to PATH*.
+3. Deja marcada la opción del lanzador **py launcher**.
+4. Comprueba que nada cambió:
+
+   ```powershell
+   python --version   # debe seguir mostrando tu versión principal (p. ej. 3.14.x)
+   py -0              # debe listar 3.12 y tu versión principal, con * en esta última
+   ```
+
+5. Crea el entorno de este proyecto pidiendo 3.12 explícitamente:
+   `py -3.12 -m venv .venv` (paso 2).
+
+> `winget install Python.Python.3.12` no muestra la casilla de *PATH*. Si lo usas, ejecuta
+> después las dos comprobaciones del punto 4.
+
+**Si `python --version` ya muestra 3.12 por error:** abre *Configuración → Aplicaciones →
+Python 3.12 → Modificar*, entra en *Advanced Options* y desmarca *Add Python to environment
+variables*. También puedes quitar a mano del `PATH` (*Editar las variables de entorno*) las
+rutas que terminan en `Python312\` y `Python312\Scripts\`. Abre una terminal nueva para que
+el cambio se aplique.
+
+#### macOS / Linux
+
+- `brew install python@3.12` y `apt install python3.12` agregan el comando `python3.12`, pero
+  **no** cambian `python3`. Comprueba con `python3 --version`.
+- En Linux **no** cambies `python3` con `update-alternatives` ni con enlaces simbólicos: el
+  sistema operativo depende de su propia versión y herramientas como `apt` pueden romperse.
+- Usa siempre `python3.12 -m venv .venv` para este proyecto.
+
+#### Por qué no se mezclan
+
+El `.venv` guarda qué intérprete lo creó. Con el entorno activo, o llamando a
+`.venv\Scripts\python.exe` / `.venv/bin/python`, siempre se ejecuta 3.12. Al salir con
+`deactivate`, o en otra terminal, vuelves a tu versión principal.
+
+| Contexto | Versión que se ejecuta |
+|---|---|
+| Terminal normal, `python` / `python3` | Tu versión principal |
+| Este proyecto con `.venv` activo | 3.12 |
+| Otros proyectos | La versión con la que se creó su propio `.venv` |
 
 ---
 
@@ -218,6 +277,7 @@ MCP. Se detiene con **Ctrl+C**.
 | `Could not resolve authentication method…` o `AuthenticationError` / HTTP 401 | No se cargó la key, o es inválida | Crea `.env` en la raíz (paso 3), abre Jupyter desde la raíz, reinicia el kernel; revisa la key en la consola |
 | `running scripts is disabled on this system` al activar en PowerShell | Política de ejecución de Windows | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. Si tu equipo no lo permite, usa `activate.bat` desde cmd o llama a `.venv\Scripts\python.exe` directamente |
 | `'python3.12' is not recognized` en Windows | En Windows el lanzador es `py` | `py -3.12 -m venv .venv` |
+| Tras instalar 3.12, `python --version` en otros proyectos muestra 3.12 | Se marcó *Add python.exe to PATH* y 3.12 quedó antes en el `PATH` | Desmarca esa opción desde *Modificar* o quita las rutas `Python312` del `PATH` (ver [otra versión de Python](#si-ya-usas-otra-versión-de-python-en-otros-proyectos)) |
 | `No Python at '...'` o `Unable to create process` | El `.venv` se creó con un Python que se desinstaló o movió | Borra `.venv` y vuelve a crearlo (paso 2) |
 | `SSL: CERTIFICATE_VERIFY_FAILED` o timeouts en `pip install` | Proxy o inspección TLS de la red corporativa | Configura el proxy (`pip install --proxy http://usuario:clave@proxy:puerto ...`) o el certificado corporativo (`pip config set global.cert <ruta-al-certificado.pem>`); consulta a Mesa de Ayuda / Seguridad TI |
 | Mismo error SSL al **llamar** a la API desde el notebook | El proxy corporativo también intercepta `api.anthropic.com` | Define `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` apuntando al certificado corporativo, o pide que se habilite el dominio |
@@ -231,6 +291,7 @@ MCP. Se detiene con **Ctrl+C**.
 ## 7. Checklist rápido
 
 - [ ] `py -0` / `python3.12 --version` muestra 3.12
+- [ ] `python --version` fuera del proyecto sigue mostrando tu versión principal
 - [ ] `.venv` creado y activo (el prompt muestra `(.venv)`)
 - [ ] `python -m pip install -r requirements.txt` sin errores
 - [ ] El comando de verificación muestra `anthropic 0.111.0` y `sys.prefix` en `.venv`
