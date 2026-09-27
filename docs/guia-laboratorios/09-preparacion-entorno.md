@@ -47,6 +47,42 @@ Si no está instalado:
 > Con otras versiones (por ejemplo 3.14), pip resuelve el `requirements.txt` sin conflictos,
 > pero el curso sólo se grabó y probó con 3.12. Usa 3.12 para evitar sorpresas.
 
+### ¿Importa el número de parche (3.12.0 vs 3.12.7)?
+
+No. Los metadatos de los notebooks de lección dicen `3.12.7`, pero cualquier **3.12.x**
+sirve:
+
+- En `3.12.x`, lo que define el lenguaje y la compatibilidad de las librerías es **`3.12`**.
+  El último número (`.0`, `.7`, …) sólo trae correcciones de errores y de seguridad, sin
+  cambios en el lenguaje ni en la librería estándar.
+- Las librerías se publican para "3.12" en general, así que pip instala exactamente las
+  versiones de la grabación.
+- Los notebooks de los labs se crearon con 3.13 y sólo exigen Python 3.10+: el simulador
+  usa únicamente la librería estándar.
+
+Verificado con **3.12.0**: `requirements.txt` instala las versiones de la grabación, una
+llamada real a la API funciona desde `.venv`, el kernel de Jupyter arranca en VS Code y los
+10 labs pasan sus 30 checks con `.venv-labs`.
+
+**Recomendación opcional:** 3.12.0 fue la primera versión de la serie (octubre 2023) y le
+faltan casi dos años de correcciones de seguridad. Para el curso da igual. Si usas esa
+instalación en otros proyectos, actualízala a la **última 3.12.x**:
+
+1. Descarga el instalador de la última 3.12 desde [python.org](https://www.python.org/downloads/)
+   y ejecútalo. Detecta la 3.12 instalada y la actualiza en la misma carpeta. Mantén
+   **desmarcado** *Add python.exe to PATH*.
+2. Actualiza los entornos para que usen el Python nuevo. Se conservan las librerías y los
+   `sitecustomize.py`:
+
+   ```
+   py -3.12 -m venv --upgrade .venv
+   py -3.12 -m venv --upgrade .venv-labs
+   ```
+
+   En macOS/Linux: `python3.12 -m venv --upgrade .venv` (e igual para `.venv-labs`).
+3. Comprueba con el [comando de verificación](#4-verificar-el-entorno) que `.venv` muestra
+   la versión nueva.
+
 ### Si ya usas otra versión de Python en otros proyectos
 
 Instalar 3.12 **no tiene por qué** cambiar tu Python por defecto. Las versiones conviven, y
